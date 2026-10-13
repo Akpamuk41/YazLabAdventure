@@ -47,3 +47,7 @@ crashlytics-buildid.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# unity crash recovery
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta
