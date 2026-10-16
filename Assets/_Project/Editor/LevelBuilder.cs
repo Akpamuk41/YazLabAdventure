@@ -17,6 +17,7 @@ using YazLab.Companion.Sensors;
 using YazLab.Core;
 using YazLab.Interactables;
 using YazLab.Player;
+using YazLab.Quests;
 using YazLab.Testing;
 using YazLab.UI;
 using static YazLab.EditorTools.EditorBuildUtils;
@@ -31,7 +32,7 @@ namespace YazLab.EditorTools
     ///   Başlangıç alanı   X[-12,10]  Z[0,20]   oyuncu + Robi
     ///   Bakım alanı       X[10,30]   Z[0,20]   alçak tünelle girilen labirent, piston kapı, şalter
     ///   Uçurum            Z[20,28]             asma köprü (menteşe Z=28)
-    ///   Karşı alan        X[-12,12]  Z[28,72]  NPC bekçi + kilitli kapı (Z=60) + hedef
+    ///   Karşı alan        X[-12,12]  Z[28,72]  ara bölüm (altınlar + geçit Z=47), NPC bekçi + kilitli kapı (Z=60) + hedef
     /// </summary>
     public static class LevelBuilder
     {
@@ -46,8 +47,18 @@ namespace YazLab.EditorTools
 
         private static readonly Vector3 PlayerSpawn = new(-4f, 0f, 6f);
         private static readonly Vector3 CompanionSpawn = new(-2f, 0f, 4.5f);
-        private static readonly Vector3 LeverPosition = new(27f, 0f, 17.6f);
-        private static readonly Vector3 LeverInteractionPoint = new(27f, 0f, 16.4f);
+        private static readonly Vector3 LeverPosition = new(27.3f, 0f, 17.3f);
+        private static readonly Vector3 LeverInteractionPoint = new(27.3f, 0f, 16.1f);
+
+        private const float QuestGateZ = 47f;
+        private const float QuestGateHalfWidth = 1.8f;
+
+        private static readonly Vector3[] CoinPositions =
+        {
+            new(-8.5f, 0f, 36f),
+            new(8.5f, 0f, 40f),
+            new(-6f, 0f, 44.5f)
+        };
 
         private static readonly Vector3[] TestSpawnPoints =
         {
@@ -77,6 +88,7 @@ namespace YazLab.EditorTools
             var piston = BuildPistonGate(gameplay);
             var lever = BuildLever(gameplay, bridge);
             var door = BuildGate(environment, gameplay);
+            var quest = BuildMiddleArea(environment, gameplay, out var questGate, out var coins);
             BuildDecoration(environment);
 
             var player = BuildPlayer(out var playerInput);
@@ -91,6 +103,7 @@ namespace YazLab.EditorTools
             BuildUi();
             var surface = BuildSystems();
             BuildTestRunner(companion, lever, bridge, piston);
+            BuildQuestTestRunner(quest, questGate, coins, player.GetComponent<PlayerMotor>(), companion);
 
             BakeNavMesh(surface);
             ValidateLayout(surface);
@@ -268,8 +281,9 @@ namespace YazLab.EditorTools
             var marker = leverGo.AddComponent<CompanionTaskMarker>();
             Set(marker, "commandLabel", "Şalteri indir");
 
-            Box("Lever_Base", LeverPosition + new Vector3(0f, 0.05f, 0f), new Vector3(1.6f, 0.1f, 1.6f), _hazard, 0, parent)
-                .GetComponent<Collider>().enabled = false;
+            var leverBase = Box("Lever_Base", LeverPosition + new Vector3(0f, 0.05f, 0f), new Vector3(1.6f, 0.1f, 1.6f), _hazard, 0, parent);
+            leverBase.GetComponent<Collider>().enabled = false;
+            leverBase.transform.SetParent(leverGo.transform, true);
             return lever;
         }
 
@@ -292,6 +306,55 @@ namespace YazLab.EditorTools
             Box("GateWall_L", new Vector3(-12f + leftLength / 2f, gateHeight / 2f, 60f), new Vector3(leftLength, gateHeight, WallThickness), _wall, ObstacleLayer, walls);
             Box("GateWall_R", new Vector3(12f - leftLength / 2f, gateHeight / 2f, 60f), new Vector3(leftLength, gateHeight, WallThickness), _wall, ObstacleLayer, walls);
             return rotating;
+        }
+
+        /// <summary>
+        /// Ara bölüm: köprüden sonra bekçi avlusunu kapatan geçit. Oyuncu karşı alana dağılmış
+        /// altınları toplayınca geçit zemine gömülür ve yol (NavMesh dahil) açılır.
+        /// </summary>
+        private static CollectQuest BuildMiddleArea(Transform environment, Transform gameplay, out SlidingGate gate, out Collectible[] coins)
+        {
+            var area = Group("MiddleArea", gameplay).transform;
+            var walls = Group("QuestWall", environment).transform;
+            float h = WallHeight / 2f;
+            float sideLength = 12f - QuestGateHalfWidth;
+
+            Box("QuestWall_L", new Vector3(-12f + sideLength / 2f, h, QuestGateZ), new Vector3(sideLength, WallHeight, WallThickness), _wall, ObstacleLayer, walls);
+            Box("QuestWall_R", new Vector3(12f - sideLength / 2f, h, QuestGateZ), new Vector3(sideLength, WallHeight, WallThickness), _wall, ObstacleLayer, walls);
+
+            var gateGo = FitModelToBox("block-moving-blue", "QuestGate", new Vector3(0f, 1.2f, QuestGateZ),
+                new Vector3(QuestGateHalfWidth * 2f, 2.4f, 0.6f), ObstacleLayer, area, true);
+            gate = gateGo.AddComponent<SlidingGate>();
+
+            PlaceModel("sign", "QuestSign", new Vector3(2.8f, 0f, QuestGateZ - 0.8f), 180f, 1.3f, area);
+
+            var questGo = Group("GoldQuest", area);
+            var quest = questGo.AddComponent<CollectQuest>();
+
+            coins = new Collectible[CoinPositions.Length];
+            for (int i = 0; i < CoinPositions.Length; i++) coins[i] = BuildCoin(area, i, CoinPositions[i]);
+
+            Set(quest, "required", CoinPositions.Length);
+            Set(quest, "targets", new Object[] { gate });
+            Set(quest, "collectibles", coins);
+            return quest;
+        }
+
+        private static Collectible BuildCoin(Transform parent, int index, Vector3 position)
+        {
+            var root = Group($"Coin_{index + 1}", parent);
+            root.layer = 2;
+            root.transform.position = position;
+
+            var trigger = root.AddComponent<SphereCollider>();
+            trigger.isTrigger = true;
+            trigger.center = new Vector3(0f, 0.9f, 0f);
+            trigger.radius = 0.8f;
+
+            var visual = PlaceModel("coin-gold", "Visual", position + Vector3.up * 0.5f, 0f, 0.8f, root.transform);
+            var coin = root.AddComponent<Collectible>();
+            Set(coin, "visual", visual.transform);
+            return coin;
         }
 
         private static void BuildDecoration(Transform parent)
@@ -533,6 +596,25 @@ namespace YazLab.EditorTools
             Set(runner, "spawnPoints", spawns.ToArray());
         }
 
+        private static void BuildQuestTestRunner(CollectQuest quest, SlidingGate gate, Collectible[] coins, PlayerMotor player,
+            CompanionController companion)
+        {
+            var runnerGo = new GameObject("QuestFlowTestRunner");
+            var before = Group("BeforeGate", runnerGo.transform).transform;
+            before.position = new Vector3(0f, 0f, QuestGateZ - 6f);
+            var courtyard = Group("Courtyard", runnerGo.transform).transform;
+            courtyard.position = new Vector3(0f, 0f, QuestGateZ + 6f);
+
+            var runner = runnerGo.AddComponent<QuestFlowTestRunner>();
+            Set(runner, "quest", quest);
+            Set(runner, "gate", gate);
+            Set(runner, "coins", coins);
+            Set(runner, "playerBehaviour", player);
+            Set(runner, "companionBehaviour", companion);
+            Set(runner, "beforeGatePoint", before);
+            Set(runner, "courtyardPoint", courtyard);
+        }
+
         private static void BakeNavMesh(NavMeshSurface surface)
         {
             Physics.SyncTransforms();
@@ -562,6 +644,10 @@ namespace YazLab.EditorTools
             NavMesh.SamplePosition(new Vector3(0f, 0f, 40f), out var far, 2f, NavMesh.AllAreas);
             NavMesh.CalculatePath(start.position, far.position, NavMesh.AllAreas, path);
             Debug.Log($"[YazLab][Doğrulama] Köprü kalkıkken karşı alana yol: {path.status} (Partial/Invalid olmalı)");
+
+            NavMesh.SamplePosition(new Vector3(0f, 0f, QuestGateZ + 5f), out var courtyard, 2f, NavMesh.AllAreas);
+            NavMesh.CalculatePath(far.position, courtyard.position, NavMesh.AllAreas, path);
+            Debug.Log($"[YazLab][Doğrulama] Geçit kapalıyken bekçi avlusuna yol: {path.status} (Partial/Invalid olmalı)");
 
             // Oyuncu kapsülü tünele sığmamalı.
             var tunnel = new Vector3(10f, 0f, 5f);
@@ -593,8 +679,9 @@ namespace YazLab.EditorTools
             Shot(directory, "01_overview", new Vector3(9f, 42f, -14f), new Vector3(9f, 0f, 30f));
             Shot(directory, "02_maintenance_topdown", new Vector3(19f, 30f, 9.9f), new Vector3(19f, 0f, 10f));
             Shot(directory, "03_player_view", PlayerSpawn + new Vector3(-1f, 3.5f, -6f), new Vector3(3f, 1f, 16f));
-            Shot(directory, "04_gate_npc", new Vector3(-3f, 4f, 47f), new Vector3(1f, 1.5f, 60f));
+            Shot(directory, "04_gate_npc", new Vector3(-3f, 4f, 50f), new Vector3(1f, 1.5f, 60f));
             Shot(directory, "05_tunnel", new Vector3(4f, 2.5f, 2f), new Vector3(10f, 0.8f, 5f));
+            Shot(directory, "06_middle_area", new Vector3(0f, 9f, 29f), new Vector3(0f, 0f, 43f));
         }
 
         private static void Shot(string directory, string name, Vector3 position, Vector3 lookAt)

@@ -84,6 +84,30 @@ namespace YazLab.Core
         public ObjectiveChangedEvent(string objective) => Objective = objective;
     }
 
+    /// <summary>Oyuncu bir görev nesnesini (altın vb.) topladı.</summary>
+    public readonly struct CollectiblePickedEvent : IGameEvent
+    {
+        public readonly string QuestId;
+        public CollectiblePickedEvent(string questId) => QuestId = questId;
+    }
+
+    /// <summary>Toplama görevinin ilerlemesi değişti.</summary>
+    public readonly struct QuestProgressEvent : IGameEvent
+    {
+        public readonly string QuestId;
+        public readonly int Collected;
+        public readonly int Required;
+
+        public QuestProgressEvent(string questId, int collected, int required)
+        {
+            QuestId = questId;
+            Collected = collected;
+            Required = required;
+        }
+
+        public bool IsComplete => Collected >= Required;
+    }
+
     public readonly struct PlayerRespawnedEvent : IGameEvent { }
 
     public readonly struct GameCompletedEvent : IGameEvent { }
