@@ -101,6 +101,7 @@ namespace YazLab.EditorTools
             BuildTriggers(gameplay);
             BuildNpcPlaceholder(gameplay);
             BuildUi();
+            BuildMenus(playerInput);
             var surface = BuildSystems();
             BuildTestRunner(companion, lever, bridge, piston);
             BuildQuestTestRunner(quest, questGate, coins, player.GetComponent<PlayerMotor>(), companion);
@@ -523,7 +524,7 @@ namespace YazLab.EditorTools
             var hint = CreateText(canvasGo.transform, "HintText", new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(1400f, 100f), 28, TextAnchor.LowerCenter, FontStyle.Bold);
             var message = CreateText(canvasGo.transform, "MessageText", new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(1400f, 60f), 30, TextAnchor.MiddleCenter, FontStyle.Bold);
             var help = CreateText(canvasGo.transform, "ControlsText", new Vector2(0f, 0f), new Vector2(30f, 25f), new Vector2(1500f, 40f), 20, TextAnchor.LowerLeft, FontStyle.Normal);
-            help.text = "WASD: Hareket   Shift: Koş   Fare: Kamera   F: Robi'ye görev ver   G: Takip/Bekle   E: Etkileşim   F9: Yoldaş testleri   Esc: İmleç";
+            help.text = "WASD: Hareket   Shift: Koş   Fare: Kamera   F: Robi'ye görev ver   G: Takip/Bekle   E: Etkileşim   F9: Yoldaş testleri   Esc: Duraklat";
             help.color = new Color(1f, 1f, 1f, 0.8f);
 
             var hud = canvasGo.AddComponent<HudView>();
@@ -535,6 +536,91 @@ namespace YazLab.EditorTools
             var eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<EventSystem>();
             eventSystem.AddComponent<InputSystemUIInputModule>();
+        }
+
+        private static void BuildMenus(KeyboardMouseInput input)
+        {
+            var canvasGo = new GameObject("Menus");
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 10;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>();
+
+            var start = CreatePanel(canvasGo.transform, "StartPanel", new Color(0.05f, 0.07f, 0.1f, 0.92f),
+                "YazLab Macera", "Robi ile birlikte köprüyü indir, altınları topla ve bekçiyi geçip hedefe ulaş.");
+            var startButton = CreateButton(start.transform, "StartButton", "Başla", 0);
+            var startQuit = CreateButton(start.transform, "QuitButton", "Çıkış", 1);
+
+            var pause = CreatePanel(canvasGo.transform, "PausePanel", new Color(0f, 0f, 0f, 0.65f), "Duraklatıldı", "Devam etmek için Esc'ye bas.");
+            var resume = CreateButton(pause.transform, "ResumeButton", "Devam Et", 0);
+            var pauseRestart = CreateButton(pause.transform, "RestartButton", "Yeniden Başla", 1);
+            var pauseMenu = CreateButton(pause.transform, "MenuButton", "Ana Menü", 2);
+
+            var end = CreatePanel(canvasGo.transform, "EndPanel", new Color(0.05f, 0.07f, 0.1f, 0.85f), "Tebrikler!", string.Empty);
+            var summary = end.transform.Find("Subtitle").GetComponent<Text>();
+            var endRestart = CreateButton(end.transform, "RestartButton", "Tekrar Oyna", 0);
+            var endMenu = CreateButton(end.transform, "MenuButton", "Ana Menü", 1);
+
+            var flow = canvasGo.AddComponent<GameFlowController>();
+            Set(flow, "inputBehaviour", input);
+            Set(flow, "startPanel", start);
+            Set(flow, "pausePanel", pause);
+            Set(flow, "endPanel", end);
+            Set(flow, "endSummaryText", summary);
+            Set(flow, "startButton", startButton);
+            Set(flow, "startQuitButton", startQuit);
+            Set(flow, "resumeButton", resume);
+            Set(flow, "pauseRestartButton", pauseRestart);
+            Set(flow, "pauseMenuButton", pauseMenu);
+            Set(flow, "endRestartButton", endRestart);
+            Set(flow, "endMenuButton", endMenu);
+
+            pause.SetActive(false);
+            end.SetActive(false);
+        }
+
+        /// <summary>Ekranı kaplayan yarı saydam panel; başlık ve alt başlık ortada üstte.</summary>
+        private static GameObject CreatePanel(Transform parent, string name, Color background, string title, string subtitle)
+        {
+            var panel = new GameObject(name, typeof(RectTransform));
+            panel.transform.SetParent(parent, false);
+            var rect = (RectTransform)panel.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            panel.AddComponent<Image>().color = background;
+
+            var titleText = CreateText(panel.transform, "Title", new Vector2(0.5f, 0.5f), new Vector2(0f, 230f), new Vector2(1400f, 120f), 84, TextAnchor.MiddleCenter, FontStyle.Bold);
+            titleText.text = title;
+            var subtitleText = CreateText(panel.transform, "Subtitle", new Vector2(0.5f, 0.5f), new Vector2(0f, 130f), new Vector2(1400f, 60f), 30, TextAnchor.MiddleCenter, FontStyle.Normal);
+            subtitleText.text = subtitle;
+            return panel;
+        }
+
+        private static Button CreateButton(Transform parent, string name, string label, int index)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, 10f - index * 100f);
+            rect.sizeDelta = new Vector2(420f, 80f);
+
+            go.AddComponent<Image>();
+            var button = go.AddComponent<Button>();
+            var colors = button.colors;
+            colors.normalColor = new Color(0.16f, 0.45f, 0.75f);
+            colors.highlightedColor = colors.selectedColor = new Color(0.26f, 0.58f, 0.9f);
+            colors.pressedColor = new Color(0.1f, 0.3f, 0.55f);
+            button.colors = colors;
+
+            var text = CreateText(go.transform, "Label", new Vector2(0.5f, 0.5f), Vector2.zero, rect.sizeDelta, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
+            text.text = label;
+            return button;
         }
 
         private static Text CreateText(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, int fontSize,

@@ -108,6 +108,16 @@ namespace YazLab.Core
         public bool IsComplete => Collected >= Required;
     }
 
+    /// <summary>
+    /// Diyalog penceresi (ör. NPC bekçi) açıldı/kapandı. Diyalog açıkken Esc duraklatma menüsünü açmaz,
+    /// diyalog Esc'yi kendisi kapatmak için kullanabilir.
+    /// </summary>
+    public readonly struct DialogStateChangedEvent : IGameEvent
+    {
+        public readonly bool IsOpen;
+        public DialogStateChangedEvent(bool isOpen) => IsOpen = isOpen;
+    }
+
     public readonly struct PlayerRespawnedEvent : IGameEvent { }
 
     public readonly struct GameCompletedEvent : IGameEvent { }

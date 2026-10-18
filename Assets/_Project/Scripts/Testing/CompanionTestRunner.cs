@@ -68,7 +68,8 @@ namespace YazLab.Testing
 
         private void Update()
         {
-            if (!_running && Keyboard.current != null && Keyboard.current.f9Key.wasPressedThisFrame)
+            // Menü veya duraklatma ekranındayken (timeScale 0) test başlatılmaz.
+            if (!_running && Time.timeScale > 0f && Keyboard.current != null && Keyboard.current.f9Key.wasPressedThisFrame)
             {
                 StartCoroutine(RunAll(quitWhenDone: false));
             }

@@ -30,11 +30,12 @@ namespace YazLab.CameraSystem
             if (target != null) _yaw = target.eulerAngles.y;
         }
 
-        private void Start() => LockCursor(true);
+        // Menü açıkken girdi kapalıdır, imleç serbest kalmalı.
+        private void Start() => LockCursor(_input is not { Enabled: false });
 
+        // Esc artık duraklatma menüsünü açıyor (GameFlowController).
         private void Update()
         {
-            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) LockCursor(false);
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && _input is { Enabled: true }) LockCursor(true);
         }
 
