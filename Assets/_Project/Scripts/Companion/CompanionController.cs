@@ -64,13 +64,13 @@ namespace YazLab.Companion
         {
             if (target == null || !target.CanInteract(gameObject))
             {
-                EventBus.Publish(new HudMessageEvent($"{displayName}: Bunu yapmama gerek yok.", new Color(1f, 0.8f, 0.4f)));
+                EventBus.Publish(new HudMessageEvent($"{displayName}: {CompanionLines.Pick(CompanionLines.NotNeeded)}", new Color(1f, 0.8f, 0.4f)));
                 return;
             }
 
             _context.StartTask(target, description);
             EventBus.Publish(new CompanionCommandIssuedEvent(description));
-            EventBus.Publish(new HudMessageEvent($"{displayName}: Tamamdır, {description.ToLowerInvariant()} için yola çıkıyorum!"));
+            EventBus.Publish(new HudMessageEvent($"{displayName}: {CompanionLines.Pick(CompanionLines.TaskStarted)}"));
             _machine.ChangeState(CompanionStateId.MoveToTarget);
         }
 
@@ -78,7 +78,7 @@ namespace YazLab.Companion
         {
             _context.ClearTask();
             _context.ReturnToFollow = true;
-            EventBus.Publish(new HudMessageEvent($"{displayName}: Seni takip ediyorum."));
+            EventBus.Publish(new HudMessageEvent($"{displayName}: {CompanionLines.Pick(CompanionLines.Following)}"));
             _machine.ChangeState(CompanionStateId.Follow);
         }
 
@@ -86,7 +86,7 @@ namespace YazLab.Companion
         {
             _context.ClearTask();
             _context.ReturnToFollow = false;
-            EventBus.Publish(new HudMessageEvent($"{displayName}: Burada bekliyorum."));
+            EventBus.Publish(new HudMessageEvent($"{displayName}: {CompanionLines.Pick(CompanionLines.Staying)}"));
             _machine.ChangeState(CompanionStateId.Idle);
         }
 

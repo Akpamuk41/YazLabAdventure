@@ -33,7 +33,7 @@ namespace YazLab.Companion.States
 
             if (TaskTimedOut)
             {
-                FailTask("Görev zaman aşımına uğradı.");
+                FailTask("Çok uzun sürdü, olmuyor. Bir daha deneyelim mi?");
                 return;
             }
 
@@ -55,7 +55,7 @@ namespace YazLab.Companion.States
             Context.ReplanAttempts++;
             if (Context.ReplanAttempts > Context.Settings.maxReplanAttempts)
             {
-                FailTask("Yol sürekli kapalı, hedefe ulaşamadım.");
+                FailTask("Önüm hep kapanıyor, geçemedim.");
                 return;
             }
 

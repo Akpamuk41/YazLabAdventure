@@ -75,7 +75,7 @@ namespace YazLab.Companion.States
 
             if (_timer > MaxAlignTime)
             {
-                FailTask("Hedefe erişemiyorum, önü kapalı.");
+                FailTask("Uzanamıyorum, önü kapalı.");
             }
         }
     }

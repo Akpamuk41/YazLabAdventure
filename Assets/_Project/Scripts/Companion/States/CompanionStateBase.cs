@@ -30,7 +30,7 @@ namespace YazLab.Companion.States
             Context.ClearTask();
 
             EventBus.Publish(new CompanionCommandCompletedEvent(description, duration));
-            EventBus.Publish(new HudMessageEvent($"Robi görevi tamamladı: {description} ({duration:0.0} sn)", new Color(0.6f, 1f, 0.6f)));
+            EventBus.Publish(new HudMessageEvent($"Robi: {CompanionLines.Pick(CompanionLines.TaskCompleted)}", new Color(0.6f, 1f, 0.6f)));
             ReturnToDefault();
         }
 

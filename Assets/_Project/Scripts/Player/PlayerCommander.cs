@@ -51,7 +51,7 @@ namespace YazLab.Player
             var task = FindBestTask();
             if (task == null)
             {
-                EventBus.Publish(new HudMessageEvent($"{_companion.DisplayName}: Şu an yapabileceğim bir görev yok."));
+                EventBus.Publish(new HudMessageEvent($"{_companion.DisplayName}: {CompanionLines.Pick(CompanionLines.NoTask)}"));
                 return;
             }
 

@@ -30,7 +30,7 @@ namespace YazLab.Companion.States
             Context.Movement.SetSpeed(Context.Settings.runSpeed);
             if (!Context.Movement.MoveTo(Context.TaskTarget.InteractionPoint.position))
             {
-                FailTask("Hedefe giden bir yol bulamadım.");
+                FailTask("Oraya nasıl gideceğimi bulamadım.");
             }
         }
 
@@ -40,7 +40,7 @@ namespace YazLab.Companion.States
 
             if (TaskTimedOut)
             {
-                FailTask("Görev zaman aşımına uğradı.");
+                FailTask("Çok uzun sürdü, olmuyor. Bir daha deneyelim mi?");
                 return;
             }
 
@@ -52,7 +52,7 @@ namespace YazLab.Companion.States
 
             if (status == MovementPathStatus.Invalid)
             {
-                FailTask("Hedefe giden bir yol yok.");
+                FailTask("Oraya giden yol yok ki.");
                 return;
             }
 
@@ -79,7 +79,7 @@ namespace YazLab.Companion.States
             _partialTimer = status == MovementPathStatus.Partial ? _partialTimer + deltaTime : 0f;
             if (_partialTimer > Context.Settings.maxTaskDuration * 0.5f)
             {
-                FailTask("Hedefe ulaşamıyorum, yol kapalı.");
+                FailTask("Yol kapanmış, ulaşamıyorum.");
             }
         }
 
