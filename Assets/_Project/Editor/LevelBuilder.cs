@@ -16,6 +16,7 @@ using YazLab.Companion.Movement;
 using YazLab.Companion.Sensors;
 using YazLab.Core;
 using YazLab.Interactables;
+using YazLab.Npc;
 using YazLab.Player;
 using YazLab.Quests;
 using YazLab.Testing;
@@ -99,7 +100,7 @@ namespace YazLab.EditorTools
             Set(player.GetComponent<PlayerMotor>(), "cameraTransform", camera.transform);
 
             BuildTriggers(gameplay);
-            BuildNpcPlaceholder(gameplay);
+            BuildGuard(gameplay, door);
             BuildUi();
             BuildMenus(playerInput);
             var surface = BuildSystems();
@@ -494,10 +495,10 @@ namespace YazLab.EditorTools
             InvisibleBox("Goal", new Vector3(0f, 1.5f, 67f), new Vector3(10f, 3f, 8f), 2, triggers, true).AddComponent<GoalTrigger>();
         }
 
-        /// <summary>Kişi B'nin LLM bekçisi için yer tutucu (şimdilik yalnızca model).</summary>
-        private static void BuildNpcPlaceholder(Transform parent)
+        /// <summary>Kilitli kapıyı koruyan LLM bekçisi (Ollama).</summary>
+        private static void BuildGuard(Transform parent, RotatingDoor door)
         {
-            var npc = new GameObject("NPC_Guard (LLM - Kişi B)") { layer = NpcLayer };
+            var npc = new GameObject("NPC_Guard") { layer = NpcLayer };
             npc.transform.SetParent(parent, false);
             var model = PlaceModel("character-oozi", "Model", Vector3.zero, 0f, 1.9f, npc.transform, NpcLayer);
             SetupAnimator(model);
@@ -506,6 +507,9 @@ namespace YazLab.EditorTools
             capsule.height = 1.9f;
             capsule.radius = 0.4f;
             npc.transform.SetPositionAndRotation(new Vector3(2.8f, 0f, 58.3f), Quaternion.Euler(0f, 180f, 0f));
+
+            var guard = npc.AddComponent<GuardNpc>();
+            Set(guard, "door", door);
         }
 
         private static void BuildUi()
