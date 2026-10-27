@@ -100,9 +100,10 @@ namespace YazLab.EditorTools
             Set(player.GetComponent<PlayerMotor>(), "cameraTransform", camera.transform);
 
             BuildTriggers(gameplay);
-            BuildGuard(gameplay, door);
+            var guard = BuildGuard(gameplay, door);
             BuildUi();
             BuildMenus(playerInput);
+            BuildGuardDialogue(guard, playerInput);
             var surface = BuildSystems();
             BuildTestRunner(companion, lever, bridge, piston);
             BuildQuestTestRunner(quest, questGate, coins, player.GetComponent<PlayerMotor>(), companion);
@@ -496,7 +497,7 @@ namespace YazLab.EditorTools
         }
 
         /// <summary>Kilitli kapıyı koruyan LLM bekçisi (Ollama).</summary>
-        private static void BuildGuard(Transform parent, RotatingDoor door)
+        private static GuardNpc BuildGuard(Transform parent, RotatingDoor door)
         {
             var npc = new GameObject("NPC_Guard") { layer = NpcLayer };
             npc.transform.SetParent(parent, false);
@@ -510,6 +511,7 @@ namespace YazLab.EditorTools
 
             var guard = npc.AddComponent<GuardNpc>();
             Set(guard, "door", door);
+            return guard;
         }
 
         private static void BuildUi()
@@ -585,6 +587,73 @@ namespace YazLab.EditorTools
 
             pause.SetActive(false);
             end.SetActive(false);
+        }
+
+        /// <summary>Bekçiyle sohbet penceresi: geçmiş, güven puanı, "düşünüyor" yazısı ve metin kutusu.</summary>
+        private static void BuildGuardDialogue(GuardNpc guard, KeyboardMouseInput input)
+        {
+            var canvasGo = new GameObject("GuardDialogue");
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 5;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>();
+
+            var panel = new GameObject("DialoguePanel", typeof(RectTransform));
+            panel.transform.SetParent(canvasGo.transform, false);
+            var rect = (RectTransform)panel.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 40f);
+            rect.sizeDelta = new Vector2(1300f, 560f);
+            panel.AddComponent<Image>().color = new Color(0.04f, 0.05f, 0.08f, 0.88f);
+
+            var title = CreateText(panel.transform, "Title", new Vector2(0f, 1f), new Vector2(30f, -20f), new Vector2(800f, 50f), 34, TextAnchor.UpperLeft, FontStyle.Bold);
+            var trust = CreateText(panel.transform, "TrustText", new Vector2(1f, 1f), new Vector2(-30f, -24f), new Vector2(400f, 40f), 26, TextAnchor.UpperRight, FontStyle.Bold);
+            var log = CreateText(panel.transform, "LogText", new Vector2(0f, 1f), new Vector2(30f, -85f), new Vector2(1240f, 330f), 26, TextAnchor.LowerLeft, FontStyle.Normal);
+            log.verticalOverflow = VerticalWrapMode.Truncate;
+            var thinking = CreateText(panel.transform, "ThinkingText", new Vector2(0f, 0f), new Vector2(30f, 100f), new Vector2(800f, 36f), 24, TextAnchor.LowerLeft, FontStyle.Italic);
+            thinking.color = new Color(1f, 0.85f, 0.4f);
+            var field = CreateInputField(panel.transform, "MessageInput", "Mesajını yaz ve Enter'a bas...");
+
+            var view = canvasGo.AddComponent<GuardDialogueView>();
+            Set(view, "guard", guard);
+            Set(view, "inputBehaviour", input);
+            Set(view, "panel", panel);
+            Set(view, "titleText", title);
+            Set(view, "logText", log);
+            Set(view, "thinkingText", thinking);
+            Set(view, "trustText", trust);
+            Set(view, "inputField", field);
+        }
+
+        private static InputField CreateInputField(Transform parent, string name, string placeholder)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 25f);
+            rect.sizeDelta = new Vector2(1240f, 64f);
+            var background = go.AddComponent<Image>();
+            background.color = new Color(1f, 1f, 1f, 0.12f);
+
+            var text = CreateText(go.transform, "Text", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1210f, 56f), 28, TextAnchor.MiddleLeft, FontStyle.Normal);
+            text.supportRichText = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var hint = CreateText(go.transform, "Placeholder", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1210f, 56f), 28, TextAnchor.MiddleLeft, FontStyle.Italic);
+            hint.text = placeholder;
+            hint.color = new Color(1f, 1f, 1f, 0.45f);
+
+            var field = go.AddComponent<InputField>();
+            field.targetGraphic = background;
+            field.textComponent = text;
+            field.placeholder = hint;
+            field.characterLimit = 200;
+            field.lineType = InputField.LineType.SingleLine;
+            return field;
         }
 
         /// <summary>Ekranı kaplayan yarı saydam panel; başlık ve alt başlık ortada üstte.</summary>
