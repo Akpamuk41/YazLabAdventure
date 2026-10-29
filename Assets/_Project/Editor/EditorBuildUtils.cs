@@ -58,7 +58,9 @@ namespace YazLab.EditorTools
 
         public static GameObject InstantiateModel(string modelName, Transform parent)
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelsFolder}/{modelName}.fbx");
+            // Tam yol verilirse (KayKit) olduğu gibi, yoksa Kenney klasöründen yüklenir.
+            string path = modelName.EndsWith(".fbx") ? modelName : $"{ModelsFolder}/{modelName}.fbx";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
             {
                 Debug.LogError($"[YazLab] Model bulunamadı: {modelName}");

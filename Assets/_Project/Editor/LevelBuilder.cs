@@ -75,13 +75,14 @@ namespace YazLab.EditorTools
         [MenuItem("YazLab/2 - Seviyeyi Oluştur")]
         public static void Build()
         {
+            VisualSetup.PrepareAssets();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             CreateMaterials();
 
             var environment = Group("Environment").transform;
             var gameplay = Group("Gameplay").transform;
 
-            BuildLighting();
+            var sun = BuildLighting();
             BuildTerrain(environment);
             BuildBoundaries(environment);
             BuildMaintenanceArea(environment);
@@ -91,6 +92,7 @@ namespace YazLab.EditorTools
             var door = BuildGate(environment, gameplay);
             var quest = BuildMiddleArea(environment, gameplay, out var questGate, out var coins);
             BuildDecoration(environment);
+            CastleDresser.Dress(environment, door.transform);
 
             var player = BuildPlayer(out var playerInput);
             var companion = BuildCompanion(player.transform);
@@ -98,6 +100,7 @@ namespace YazLab.EditorTools
 
             var camera = BuildCamera(player.transform, playerInput);
             Set(player.GetComponent<PlayerMotor>(), "cameraTransform", camera.transform);
+            VisualSetup.Apply(camera, environment, sun);
 
             BuildTriggers(gameplay);
             var guard = BuildGuard(gameplay, door);
@@ -127,19 +130,21 @@ namespace YazLab.EditorTools
             _metal = GetMaterial("M_Metal", new Color(0.35f, 0.38f, 0.42f), 0.6f);
         }
 
-        private static void BuildLighting()
+        private static Light BuildLighting()
         {
             var light = new GameObject("Directional Light").AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.3f;
-            light.color = new Color(1f, 0.96f, 0.88f);
+            light.intensity = 1.6f;
+            light.color = new Color(1f, 0.93f, 0.8f);
             light.shadows = LightShadows.Soft;
-            light.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
+            light.shadowStrength = 0.85f;
+            light.transform.rotation = Quaternion.Euler(42f, -35f, 0f);
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.62f, 0.72f, 0.85f);
-            RenderSettings.ambientEquatorColor = new Color(0.5f, 0.55f, 0.55f);
-            RenderSettings.ambientGroundColor = new Color(0.25f, 0.22f, 0.2f);
+            RenderSettings.ambientSkyColor = new Color(0.55f, 0.66f, 0.82f);
+            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.48f, 0.46f);
+            RenderSettings.ambientGroundColor = new Color(0.22f, 0.2f, 0.17f);
+            return light;
         }
 
         private static void BuildTerrain(Transform parent)
@@ -400,8 +405,9 @@ namespace YazLab.EditorTools
             controller.stepOffset = 0.3f;
             controller.slopeLimit = 45f;
 
-            var model = PlaceModel("character-oobi", "Model", Vector3.zero, 0f, 1.7f, player.transform, PlayerLayer);
-            SetupAnimator(model);
+            var model = PlaceModel(CharacterDresser.PrincessModel, "Model", Vector3.zero, 0f, 1.7f, player.transform, PlayerLayer);
+            CharacterDresser.DressPrincess(model);
+            SetupAnimator(model, CharacterAnimatorBuilder.PrincessControllerPath);
 
             input = player.AddComponent<KeyboardMouseInput>();
             player.AddComponent<PlayerMotor>();
@@ -418,9 +424,11 @@ namespace YazLab.EditorTools
         {
             var root = new GameObject("Companion_Robi") { layer = CompanionLayer };
             var model = PlaceModel("character-oodi", "Model", Vector3.zero, 0f, 0.85f, root.transform, CompanionLayer);
+            CharacterDresser.TintRobi(model);
             SetupAnimator(model);
 
             var agent = root.AddComponent<NavMeshAgent>();
+            agent.enabled = false; // NavMeshMovement.Start açar
             agent.agentTypeID = 0;
             agent.radius = 0.3f;
             agent.height = 0.9f;
@@ -444,11 +452,11 @@ namespace YazLab.EditorTools
             return companion;
         }
 
-        private static void SetupAnimator(GameObject model)
+        private static void SetupAnimator(GameObject model, string controllerPath = CharacterAnimatorBuilder.ControllerPath)
         {
             var animator = model.GetComponent<Animator>();
             if (animator == null) animator = model.AddComponent<Animator>();
-            animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterAnimatorBuilder.ControllerPath);
+            animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
         }
@@ -501,13 +509,14 @@ namespace YazLab.EditorTools
         {
             var npc = new GameObject("NPC_Guard") { layer = NpcLayer };
             npc.transform.SetParent(parent, false);
-            var model = PlaceModel("character-oozi", "Model", Vector3.zero, 0f, 1.9f, npc.transform, NpcLayer);
-            SetupAnimator(model);
+            var model = PlaceModel(CharacterDresser.KnightModel, "Model", Vector3.zero, 0f, 1.9f, npc.transform, NpcLayer);
+            CharacterDresser.DressKnight(model);
+            SetupAnimator(model, CharacterAnimatorBuilder.KayKitControllerPath);
             var capsule = npc.AddComponent<CapsuleCollider>();
             capsule.center = new Vector3(0f, 0.95f, 0f);
             capsule.height = 1.9f;
             capsule.radius = 0.4f;
-            npc.transform.SetPositionAndRotation(new Vector3(2.8f, 0f, 58.3f), Quaternion.Euler(0f, 180f, 0f));
+            npc.transform.SetPositionAndRotation(new Vector3(2.8f, 0f, 57.4f), Quaternion.Euler(0f, 180f, 0f));
 
             var guard = npc.AddComponent<GuardNpc>();
             Set(guard, "door", door);
@@ -849,9 +858,10 @@ namespace YazLab.EditorTools
             var camera = go.AddComponent<Camera>();
             camera.fieldOfView = 55f;
             camera.farClipPlane = 300f;
+            VisualSetup.SetupCamera(camera);
             go.transform.SetPositionAndRotation(position, Quaternion.LookRotation(lookAt - position));
 
-            var rt = new RenderTexture(1600, 900, 24);
+            var rt = new RenderTexture(1600, 900, 24) { antiAliasing = 4 };
             camera.targetTexture = rt;
             camera.Render();
 

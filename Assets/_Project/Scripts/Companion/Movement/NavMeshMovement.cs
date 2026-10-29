@@ -5,6 +5,7 @@ namespace YazLab.Companion.Movement
 {
     /// <summary>NavMeshAgent üzerinden A* tabanlı yol bulma ile hareket.</summary>
     [RequireComponent(typeof(NavMeshAgent))]
+    [DefaultExecutionOrder(-50)]
     public class NavMeshMovement : MonoBehaviour, IMovementStrategy
     {
         [SerializeField] private float destinationSampleRadius = 2f;
@@ -33,6 +34,10 @@ namespace YazLab.Companion.Movement
         public Vector3 Velocity => _agent.velocity;
 
         private void Awake() => _agent = GetComponent<NavMeshAgent>();
+
+        // Ajan sahnede kapalı gelir: NavMeshSurface verisini OnEnable'da ekliyor, ajan ondan önce açılırsa
+        // "no valid NavMesh" hatası veriyor. Start tüm OnEnable'lardan sonra çalışır.
+        private void Start() => _agent.enabled = true;
 
         public bool MoveTo(Vector3 destination)
         {
