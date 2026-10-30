@@ -27,6 +27,13 @@ namespace YazLab.EditorTools
             if (!string.IsNullOrEmpty(screenshotDir)) LevelBuilder.CaptureScreenshots(screenshotDir);
         }
 
+        // Play modunda sahne yeniden kurulamaz; menüler soluk görünür.
+        [MenuItem("YazLab/Hepsini Kur (Ayarlar + Animator + Seviye)", true)]
+        [MenuItem("YazLab/Windows Build Al", true)]
+        [MenuItem("YazLab/2 - Seviyeyi Oluştur", true)]
+        [MenuItem("YazLab/Ekran Görüntülerini Al", true)]
+        public static bool NotInPlayMode() => !EditorApplication.isPlayingOrWillChangePlaymode;
+
         public static void CaptureScreenshots()
         {
             EditorSceneManager.OpenScene(LevelBuilder.ScenePath);

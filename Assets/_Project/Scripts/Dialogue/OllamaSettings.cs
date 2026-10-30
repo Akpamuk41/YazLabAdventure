@@ -15,6 +15,6 @@ namespace YazLab.Dialogue
         [Tooltip("Bu süreden uzun süren istek zaman aşımı sayılır. İlk istekte model yüklendiği için biraz uzun tutuldu.")]
         public int timeoutSeconds = 45;
 
-        [Range(0f, 1.5f)] public float temperature = 0.6f;
+        [Range(0f, 1.5f)] public float temperature = 0.4f;
     }
 }

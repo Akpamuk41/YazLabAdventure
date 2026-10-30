@@ -17,6 +17,11 @@ namespace YazLab.Npc
         private const string FixJsonReminder =
             "Önceki cevabın geçerli JSON değildi. Yalnızca reply, mood, trust_change, open_door alanlarıyla JSON ver.";
 
+        private const string TurkishOnlyReminder =
+            "Önceki cevabında İngilizce kelime ya da yabancı harf vardı. reply alanını yalnızca Türkçe yaz.";
+
+        private const int MaxAttempts = 2;
+
         private readonly ILlmClient _client;
         private readonly GuardPersona _persona;
         private readonly List<ChatMessage> _history = new();
@@ -53,25 +58,33 @@ namespace YazLab.Npc
             try
             {
                 var userMessage = ChatMessage.User(playerText.Trim());
-                var response = await _client.ChatAsync(BuildMessages(userMessage, null), GuardDecision.JsonSchema, cancellationToken);
-                if (!response.Success) return Failed(response);
+                string reminder = null;
 
-                if (!GuardDecisionParser.TryParse(response.Content, out var decision, out var error))
+                // Bozuk JSON ya da Türkçe olmayan cevapta bir kez daha, düzeltme notuyla sorulur.
+                for (int attempt = 0; attempt < MaxAttempts; attempt++)
                 {
-                    // Bozuk çıktıda bir kez daha, düzeltme notuyla sorulur.
-                    Debug.LogWarning($"[Bekçi] Geçersiz JSON ({error}), tekrar soruluyor: {response.Content}");
-                    response = await _client.ChatAsync(BuildMessages(userMessage, FixJsonReminder), GuardDecision.JsonSchema, cancellationToken);
+                    var response = await _client.ChatAsync(BuildMessages(userMessage, reminder), GuardDecision.JsonSchema, cancellationToken);
                     if (!response.Success) return Failed(response);
 
-                    if (!GuardDecisionParser.TryParse(response.Content, out decision, out error))
+                    if (!GuardDecisionParser.TryParse(response.Content, out var decision, out var error))
                     {
-                        Debug.LogWarning($"[Bekçi] Yine geçersiz JSON ({error}): {response.Content}");
-                        return GuardTurn.Failed(Trust, LlmErrorKind.BadResponse,
-                            $"{_persona.guardName} ne dediğini toparlayamadı. Bir daha söyler misin?");
+                        Debug.LogWarning($"[Bekçi] Geçersiz JSON ({error}): {response.Content}");
+                        reminder = FixJsonReminder;
+                        continue;
                     }
+
+                    if (!ReplyLanguageCheck.IsTurkish(decision.Reply, out error))
+                    {
+                        Debug.LogWarning($"[Bekçi] Türkçe olmayan cevap ({error}): {decision.Reply}");
+                        reminder = TurkishOnlyReminder;
+                        continue;
+                    }
+
+                    return Apply(userMessage, decision);
                 }
 
-                return Apply(userMessage, decision);
+                return GuardTurn.Failed(Trust, LlmErrorKind.BadResponse,
+                    $"{_persona.guardName} ne dediğini toparlayamadı. Bir daha söyler misin?");
             }
             finally
             {
